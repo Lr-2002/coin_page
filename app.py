@@ -315,19 +315,17 @@ with task_tabs[0]:
                                 f"<h4 style='color: #333333; background-color: {BG1}; padding: 8px 12px; border-radius: 6px;'>Task Images</h4>",
                                 unsafe_allow_html=True,
                             )
-                            col1, col2 = st.columns(2)
-                            with col1:
-                                st.image(
-                                    image_urls[0],
-                                    caption="Initial State",
-                                    use_container_width=True,
-                                )
-                            with col2:
-                                st.image(
-                                    image_urls[1],
-                                    caption="Goal State",
-                                    use_container_width=True,
-                                )
+                            # Create a single row for all images
+                            image_captions = ["Initial State", "Goal State"]
+                            if len(image_urls) > 2:
+                                image_captions.extend([f"View {i+1}" for i in range(2, len(image_urls))])
+                            
+                            # Display all images in a single row
+                            st.image(
+                                image_urls[:min(len(image_urls), 4)],  # Limit to 4 images to avoid overcrowding
+                                caption=image_captions[:min(len(image_urls), 4)],
+                                width=150  # Fixed width for each image
+                            )
                         elif len(image_urls) == 1:
                             st.markdown(
                                 f"<h4 style='color: #333333; background-color: {BG1}; padding: 8px 12px; border-radius: 6px;'>Task Preview</h4>",
@@ -351,8 +349,241 @@ with task_tabs[0]:
 
 # --- Interactive Tasks Tab ---
 with task_tabs[1]:
+    # Add workflow lengths pie chart
+    st.markdown(
+        f"<h3 style='color: #333333; background-color: {BG1}; padding: 10px 15px; border-radius: 8px;'>Workflow Length Distribution</h3>",
+        unsafe_allow_html=True,
+    )
+    
+    # Read workflow lengths CSV
+    workflow_csv_path = Path("static/workflow_lengths.csv")
+    if workflow_csv_path.exists():
+        import pandas as pd
+        import plotly.graph_objects as go
+        import plotly.express as px
+        
+        # Read the CSV file
+        df = pd.read_csv(workflow_csv_path)
+        
+        # Create custom hover text
+        hover_text = [f"{length} Steps: {count} tasks" for length, count in zip(df['flow_length'], df['number'])]
+        
+        # Create custom color scale based on BF9264 (warm brown)
+        colors = [
+            '#BF9264',  # Main warm brown
+            '#D9B38C',  # Lighter warm brown
+            '#A67C4E',  # Darker warm brown
+            '#E6C9A8',  # Very light warm brown
+            '#8C6B4A'   # Very dark warm brown
+        ]
+        
+        # Create pie chart with Plotly
+        fig = go.Figure(data=[go.Pie(
+            labels=[f"{length} Steps" for length in df['flow_length']],
+            values=df['number'],
+            hoverinfo='label+percent+text',
+            hovertext=hover_text,
+            textinfo='percent',
+            textfont=dict(size=14, color='#333333'),
+            marker=dict(
+                colors=colors,
+                line=dict(color='#FFFFFF', width=1.5)
+            ),
+            pull=[0.05] * len(df)  # Slight pull for all slices
+        )])
+        
+        # Update layout
+        fig.update_layout(
+            title={
+                'text': "Distribution of Workflow Lengths",
+                'y': 0.95,
+                'x': 0.5,
+                'xanchor': 'center',
+                'yanchor': 'top',
+                'font': dict(size=20, color='#333333')
+            },
+            legend=dict(
+                title="Workflow Lengths",
+                orientation="h",
+                yanchor="bottom",
+                y=-0.2,
+                xanchor="center",
+                x=0.5
+            ),
+            margin=dict(t=80, b=80, l=40, r=40),
+            height=500,
+            paper_bgcolor='rgba(0,0,0,0)',  # Transparent background
+            plot_bgcolor='rgba(0,0,0,0)',   # Transparent plot area
+            font=dict(color='#333333')      # Default font color
+        )
+        
+        # Display the chart in Streamlit
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # Display total number of tasks
+        total_tasks = df['number'].sum()
+        st.info(f"Total number of tasks: {total_tasks}")
+    else:
+        st.warning("Workflow lengths CSV file not found.")
+    
+    # Add video frame count pie chart
+    st.markdown(
+        f"<h3 style='color: #333333; background-color: {BG1}; padding: 10px 15px; border-radius: 8px;'>Video Frame Count Distribution</h3>",
+        unsafe_allow_html=True,
+    )
+    
+    # Read video frames CSV
+    video_frames_csv_path = Path("static/video_frames.csv")
+    if video_frames_csv_path.exists():
+        # Import required libraries if not already imported
+        import pandas as pd
+        import plotly.graph_objects as go
+        import plotly.express as px
+        
+        # Read the CSV file
+        df_frames = pd.read_csv(video_frames_csv_path)
+        
+        # Create custom hover text
+        hover_text_frames = [f"{frame_range}: {count} videos" for frame_range, count in zip(df_frames['frame_range'], df_frames['number'])]
+        
+        # Create custom color scale for frames chart
+        frame_colors = [
+            '#BF9264',  # Main warm brown
+            '#D9B38C',  # Lighter warm brown
+            '#A67C4E',  # Darker warm brown
+            '#E6C9A8'   # Very light warm brown
+        ]
+        
+        # Create pie chart with Plotly
+        fig_frames = go.Figure(data=[go.Pie(
+            labels=[f"{frame_range}" for frame_range in df_frames['frame_range']],
+            values=df_frames['number'],
+            hoverinfo='label+percent+text',
+            hovertext=hover_text_frames,
+            textinfo='percent',
+            textfont=dict(size=14, color='#333333'),
+            marker=dict(
+                colors=frame_colors,
+                line=dict(color='#FFFFFF', width=1.5)
+            ),
+            pull=[0.05] * len(df_frames)  # Slight pull for all slices
+        )])
+        
+        # Update layout
+        fig_frames.update_layout(
+            title={
+                'text': "Distribution of Video Frame Counts",
+                'y': 0.95,
+                'x': 0.5,
+                'xanchor': 'center',
+                'yanchor': 'top',
+                'font': dict(size=20, color='#333333')
+            },
+            legend=dict(
+                title="Frame Ranges",
+                orientation="h",
+                yanchor="bottom",
+                y=-0.2,
+                xanchor="center",
+                x=0.5
+            ),
+            margin=dict(t=80, b=80, l=40, r=40),
+            height=500,
+            paper_bgcolor='rgba(0,0,0,0)',  # Transparent background
+            plot_bgcolor='rgba(0,0,0,0)',   # Transparent plot area
+            font=dict(color='#333333')      # Default font color
+        )
+        
+        # Display the chart in Streamlit
+        st.plotly_chart(fig_frames, use_container_width=True)
+        
+        # Display total number of videos
+        total_videos = df_frames['number'].sum()
+        st.info(f"Total number of videos: {total_videos}")
+    else:
+        st.warning("Video frames CSV file not found.")
+    
+    # Add skill distribution histogram
+    st.markdown(
+        f"<h3 style='color: #333333; background-color: {BG1}; padding: 10px 15px; border-radius: 8px;'>Skill Distribution Across Tasks</h3>",
+        unsafe_allow_html=True,
+    )
+    
+    # Read skill distribution CSV
+    skill_dist_csv_path = Path("static/skill_distribution.csv")
+    if skill_dist_csv_path.exists():
+        # Import required libraries if not already imported
+        import pandas as pd
+        import plotly.graph_objects as go
+        import plotly.express as px
+        
+        # Read the CSV file
+        df_skills = pd.read_csv(skill_dist_csv_path)
+        
+        # Sort by count in descending order
+        df_skills = df_skills.sort_values('count', ascending=False)
+        
+        # Create a custom color gradient based on the count
+        color_scale = [
+            '#BF9264',  # Main warm brown
+            '#D9B38C',  # Lighter warm brown
+            '#A67C4E',  # Darker warm brown
+            '#E6C9A8',  # Very light warm brown
+            '#8C6B4A'   # Very dark warm brown
+        ]
+        
+        # Create histogram with Plotly
+        fig_skills = go.Figure(data=[go.Bar(
+            x=df_skills['skill'],
+            y=df_skills['count'],
+            text=df_skills['count'],
+            textposition='auto',
+            hoverinfo='x+y',
+            marker=dict(
+                color=df_skills['count'],
+                colorscale=color_scale,
+                line=dict(color='#FFFFFF', width=1.5)
+            )
+        )])
+        
+        # Update layout
+        fig_skills.update_layout(
+            title={
+                'text': "Distribution of Skills Across Tasks",
+                'y': 0.95,
+                'x': 0.5,
+                'xanchor': 'center',
+                'yanchor': 'top',
+                'font': dict(size=20, color='#333333')
+            },
+            xaxis=dict(
+                title=dict(text="Skill", font=dict(size=16, color='#333333')),
+                tickfont=dict(size=14, color='#333333')
+            ),
+            yaxis=dict(
+                title=dict(text="Number of Tasks", font=dict(size=16, color='#333333')),
+                tickfont=dict(size=14, color='#333333')
+            ),
+            margin=dict(t=80, b=80, l=40, r=40),
+            height=500,
+            paper_bgcolor='rgba(0,0,0,0)',  # Transparent background
+            plot_bgcolor='rgba(0,0,0,0)',   # Transparent plot area
+            font=dict(color='#333333')      # Default font color
+        )
+        
+        # Display the chart in Streamlit
+        st.plotly_chart(fig_skills, use_container_width=True)
+        
+        # Display total number of skills
+        total_skill_occurrences = df_skills['count'].sum()
+        unique_skills = len(df_skills)
+        st.info(f"Total of {unique_skills} unique skills across {total_skill_occurrences} skill occurrences in all tasks")
+    else:
+        st.warning("Skill distribution CSV file not found.")
+    
+    # Continue with interactive tasks documentation
     interactive_md_path = Path("tasks/coin_bench_interactive.md")
-
+    
     if interactive_md_path.exists():
         interactive_md = interactive_md_path.read_text()
 
@@ -533,19 +764,17 @@ with task_tabs[1]:
                                 f"<h4 style='color: #333333; background-color: {BG1}; padding: 8px 12px; border-radius: 6px;'>Task Images</h4>",
                                 unsafe_allow_html=True,
                             )
-                            col1, col2 = st.columns(2)
-                            with col1:
-                                st.image(
-                                    image_urls[0],
-                                    caption="Initial State",
-                                    use_container_width=True,
-                                )
-                            with col2:
-                                st.image(
-                                    image_urls[1],
-                                    caption="Goal State",
-                                    use_container_width=True,
-                                )
+                            # Create a single row for all images
+                            image_captions = ["Initial State", "Goal State"]
+                            if len(image_urls) > 2:
+                                image_captions.extend([f"View {i+1}" for i in range(2, len(image_urls))])
+                            
+                            # Display all images in a single row
+                            st.image(
+                                image_urls[:min(len(image_urls), 4)],  # Limit to 4 images to avoid overcrowding
+                                caption=image_captions[:min(len(image_urls), 4)],
+                                width=150  # Fixed width for each image
+                            )
                         elif len(image_urls) == 1:
                             st.markdown(
                                 f"<h4 style='color: #333333; background-color: {BG1}; padding: 8px 12px; border-radius: 6px;'>Task Preview</h4>",
